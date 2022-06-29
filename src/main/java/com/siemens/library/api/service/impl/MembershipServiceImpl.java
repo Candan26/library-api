@@ -1,19 +1,25 @@
 package com.siemens.library.api.service.impl;
 
+import com.siemens.library.api.entity.ResourceBook;
 import com.siemens.library.api.entity.ResourceMember;
 import com.siemens.library.api.mapper.ServiceMapper;
+import com.siemens.library.api.model.*;
 import com.siemens.library.api.model.Error;
-import com.siemens.library.api.model.LibraryResponse;
-import com.siemens.library.api.model.RequestBodyToCreateMember;
 import com.siemens.library.api.repository.MembershipRepository;
+import com.siemens.library.api.repository.ResourceBookSpecification;
+import com.siemens.library.api.repository.ResourceMembershipSpecification;
 import com.siemens.library.api.service.MembershipService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 import static com.siemens.library.api.util.LibraryUtil.*;
 
@@ -42,7 +48,73 @@ public class MembershipServiceImpl implements MembershipService {
         return new LibraryResponse(HttpStatus.OK, SUCCEED, serviceMapper.memberToDto(repository.save(member)), null);
     }
 
-    private boolean checkStructureError(RequestBodyToCreateMember member, StringBuilder em, StringBuilder ec) {
+    @Override
+    public LibraryResponse deleteBookById(String id) {
+        repository.deleteById(id);
+        return new LibraryResponse(HttpStatus.OK,SUCCEED,"member is deleted",null);
+    }
+
+    @Override
+    public LibraryResponse findMemberById(String id) {
+
+        Optional<ResourceMember> obj = repository.findById(id);
+        if(obj.isEmpty()){
+            return new LibraryResponse(HttpStatus.NOT_FOUND, FAILED, "", new Error(MEMBER_NOT_FOUND_ERROR, MEMBER_NOT_FOUND_ERROR_CODE));
+        }
+
+        return new LibraryResponse(HttpStatus.OK, SUCCEED, serviceMapper.memberToDto(obj.get()), null);
+    }
+
+    @Override
+    public LibraryResponse queryBooks(String name, String surname, String email, String phoneNumber) {
+        StringBuilder em = new StringBuilder();
+        StringBuilder ec = new StringBuilder();
+        ResourceMember rm = ResourceMember.
+                builder().
+                name(name).
+                surname(surname).
+                email(email).
+                phoneNumber(phoneNumber).
+                build();
+
+        boolean hasError = checkStructureError(rm, em,ec);
+        if (hasError) {
+            return new LibraryResponse(HttpStatus.BAD_REQUEST, FAILED, "", new Error(em.toString(), ec.toString()));
+        }
+        Specification<ResourceMember> spec = new ResourceMembershipSpecification(rm);
+        List<ResourceMember> memberList = repository.findAll(spec);
+        ArrayList<ResourceMember> resourceMemberArrayList = new ArrayList<>(memberList);
+        ResponseToQueryMembers response = new ResponseToQueryMembers(resourceMemberArrayList);
+        return new LibraryResponse(HttpStatus.OK,SUCCEED,response ,null);
+    }
+
+    private boolean checkStructureError(ResourceMember rm, StringBuilder em, StringBuilder ec) {
+        boolean hasError = true;
+        if (rm.getName() != null && rm.getName().length() > nameLength) {
+            em.append(NAME_LENGTH_ERROR);
+            ec.append(NAME_LENGTH_ERROR_CODE);
+        }
+        //check surname
+        else if (rm.getSurname() != null && rm.getSurname().length() > surnameLength) {
+            em.append(SURNAME_LENGTH_ERROR);
+            ec.append(SURNAME_LENGTH_ERROR_CODE);
+        }
+        //check email
+        else if (rm.getEmail() != null && rm.getEmail().length() > emailLength) {
+            em.append(EMAIL_LENGTH_ERROR);
+            ec.append(EMAIL_LENGTH_ERROR_CODE);
+        }
+        //check phone
+        else if (rm.getPhoneNumber() != null && rm.getPhoneNumber().length() > phoneNumberLength) {
+            em.append(PHONE_NUMBER_LENGTH_ERROR);
+            ec.append(PHONE_NUMBER_LENGTH_ERROR_CODE);
+        }else {
+            hasError = false;
+        }
+        return hasError;
+    }
+
+        private boolean checkStructureError(RequestBodyToCreateMember member, StringBuilder em, StringBuilder ec) {
         boolean hasError = true;
         SimpleDateFormat sdf = new SimpleDateFormat(publishDateFormat);
 

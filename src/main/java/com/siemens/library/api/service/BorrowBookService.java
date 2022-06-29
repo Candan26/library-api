@@ -8,4 +8,6 @@ public interface BorrowBookService {
     LibraryResponse createNewBorrowing(RequestBodyToBorrowBook request);
 
     LibraryResponse returnBookInformation(String id, RequestBodyToReturnBook request);
+
+    LibraryResponse queryBorrowing(String bookId, String memberId, Boolean late, Boolean returned);
 }

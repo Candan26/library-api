@@ -4,21 +4,21 @@ import com.siemens.library.api.entity.ResourceBook;
 import com.siemens.library.api.entity.ResourceBorrowing;
 import com.siemens.library.api.entity.ResourceMember;
 import com.siemens.library.api.mapper.ServiceMapper;
+import com.siemens.library.api.model.*;
 import com.siemens.library.api.model.Error;
-import com.siemens.library.api.model.LibraryResponse;
-import com.siemens.library.api.model.RequestBodyToBorrowBook;
-import com.siemens.library.api.model.RequestBodyToReturnBook;
-import com.siemens.library.api.repository.BookRepository;
-import com.siemens.library.api.repository.BorrowRepository;
-import com.siemens.library.api.repository.MembershipRepository;
+import com.siemens.library.api.repository.*;
 import com.siemens.library.api.service.BorrowBookService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 
 import static com.siemens.library.api.util.LibraryUtil.*;
@@ -48,7 +48,7 @@ public class BorrowBookServiceImpl implements BorrowBookService {
         if (!resourceBookOptional.isPresent()) {
             return new LibraryResponse(HttpStatus.NOT_FOUND, FAILED, "", new Error(BOOK_NOT_FOUND_ERROR, BOOK_NOT_FOUND_ERROR_CODE));
         }
-        if (!resourceBookOptional.get().isAvailable()) {
+        if (!resourceBookOptional.get().getAvailable()) {
             return new LibraryResponse(HttpStatus.CONFLICT, FAILED, "", new Error(BOOK_IS_NOT_AVAILABLE_EMPTY_ERROR, BOOK_IS_NOT_AVAILABLE_EMPTY_ERROR_CODE));
         }
         // borrow book
@@ -82,6 +82,31 @@ public class BorrowBookServiceImpl implements BorrowBookService {
         ResourceBorrowing resourceBorrowing = resourceBorrowingOptional.get();
         resourceBorrowing.setReturnDate(request.getReturnDate());
         return new LibraryResponse(HttpStatus.OK, SUCCEED, serviceMapper.borrowingToDto(borrowRepository.save(resourceBorrowing)), null);
+    }
+
+    @Override
+    public LibraryResponse queryBorrowing(String bookId, String memberId, Boolean late, Boolean returned) {
+        String dueDate = null;
+        String returnDate = null ;
+        if(late!=null && late){
+            dueDate = String.valueOf(new Date());
+        }
+        if(returned!=null && returned){
+            returnDate = String.valueOf(new Date());
+        }
+        ResourceBorrowing filter =
+                ResourceBorrowing.
+                builder().
+                bookId(bookId).
+                memberId(memberId).
+                dueDate(dueDate).
+                returnDate(returnDate).
+                build();
+        Specification<ResourceBorrowing> spec = new ResourceBorrowingSpecification(filter);
+        List<ResourceBorrowing> borrowingList = borrowRepository.findAll(spec);
+        ArrayList<ResourceBorrowing> resourceBorrowingArrayList = new ArrayList<>(borrowingList);
+        ResponseToQueryBorrowings response = new ResponseToQueryBorrowings(resourceBorrowingArrayList);
+        return new LibraryResponse(HttpStatus.OK,SUCCEED,response ,null);
     }
 
     private boolean checkStructureError(String id, RequestBodyToReturnBook request) {

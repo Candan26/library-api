@@ -50,4 +50,22 @@ public class BorrowingsController {
             return new ResponseEntity<>("Service Error " + ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+    @CrossOrigin(origins = "*")
+    @GetMapping(value = "/borrowings", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> queryBorrowing (@RequestParam(value = "bookId", defaultValue = "") String bookId,
+                                          @RequestParam(value = "memberId", defaultValue = "") String memberId,
+                                          @RequestParam(value = "late",required = false, defaultValue = "true") Boolean late,
+                                          @RequestParam(value = "returned",required = false, defaultValue = "true") Boolean returned){
+        try {
+            LibraryResponse response = borrowBookService.queryBorrowing(bookId,memberId,late,returned);
+            if (response.getError() != null) {
+                return new ResponseEntity<>(response.getError(), response.getStatus());
+            }
+            return new ResponseEntity<>(response.getData(), HttpStatus.OK);
+        } catch (Exception ex) {
+            log.error("Exception on ", ex);
+            return new ResponseEntity<>("Service Error " + ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 }

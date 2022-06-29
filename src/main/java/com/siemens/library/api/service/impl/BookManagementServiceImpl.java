@@ -4,18 +4,21 @@ package com.siemens.library.api.service.impl;
 import com.siemens.library.api.entity.ResourceBook;
 import com.siemens.library.api.mapper.ServiceMapper;
 import com.siemens.library.api.model.Error;
-import com.siemens.library.api.model.LibraryResponse;
-import com.siemens.library.api.model.RequestBodyToCreateBook;
+import com.siemens.library.api.model.*;
 import com.siemens.library.api.repository.BookRepository;
+import com.siemens.library.api.repository.ResourceBookSpecification;
 import com.siemens.library.api.service.BookManagementService;
 import com.siemens.library.api.util.LibraryUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import static com.siemens.library.api.util.LibraryUtil.*;
@@ -45,11 +48,6 @@ public class BookManagementServiceImpl implements BookManagementService {
                                 available(true).
                                 build();
         return new LibraryResponse(HttpStatus.OK,SUCCEED, serviceMapper.bookToDto(bookRepository.save(book)),null);
-    }
-
-    @Override
-    public LibraryResponse queryBooks(String isbn, String title, String author, String category, boolean available) {
-        return null;
     }
 
     @Override
@@ -83,6 +81,56 @@ public class BookManagementServiceImpl implements BookManagementService {
         bookRepository.deleteById(id);
         return new LibraryResponse(HttpStatus.OK,SUCCEED,"book is deleted",null);
     }
+
+    @Override
+    public LibraryResponse queryBooks(String isbn, String title, String author, String category, boolean available) {
+        StringBuilder em = new StringBuilder();
+        StringBuilder ec = new StringBuilder();
+        boolean hasError = checkStructureError(isbn,title,author,category,em,ec);
+        if (hasError) {
+            return new LibraryResponse(HttpStatus.BAD_REQUEST, FAILED, "", new Error(em.toString(),  ec.toString()));
+        }
+        ResourceBook filter = new ResourceBook();
+        filter.setIsbn(isbn);
+        filter.setTitle(title);
+        filter.setCategory(category);
+        filter.setAvailable(available);
+        Specification<ResourceBook> spec = new ResourceBookSpecification(filter);
+        List<ResourceBook> bookList = bookRepository.findAll(spec);
+        ArrayList<ResourceBook> resourceBookArrayList = new ArrayList<>(bookList);
+        ResponseToQueryBooks response = new ResponseToQueryBooks(resourceBookArrayList);
+        return new LibraryResponse(HttpStatus.OK,SUCCEED,response ,null);
+    }
+
+    private boolean checkStructureError(String isbn, String title, String author, String category, StringBuilder em, StringBuilder ec) {
+        // check isbn
+        boolean hasError = false;
+        if (!isbn.matches(LibraryUtil.isbnRegex) || isbn.length() > isnLength) {
+            em.append(ISBN_FORMAT_ERROR);
+            ec.append(ISBN_FORMAT_ERROR_CODE);
+            hasError = true;
+        }
+        //check title
+        else if (title.length() > titleLength) {
+            em.append(TITLE_LENGTH_ERROR);
+            ec.append(TITLE_LENGTH_ERROR_CODE);
+            hasError = true;
+        }
+        //check Author
+        else if (author.length() > authorLength) {
+            em.append(AUTHOR_LENGTH_ERROR);
+            ec.append(AUTHOR_LENGTH_ERROR_CODE);
+            hasError = true;
+        }
+        //check category
+        else if (category != null && category.length() > categoryLength) {
+            em.append(CATEGORY_LENGTH_ERROR);
+            ec.append(CATEGORY_LENGTH_ERROR_CODE);
+            hasError = true;
+        }
+        return hasError;
+    }
+
 
     private boolean checkStructureError(RequestBodyToCreateBook book, StringBuilder em, StringBuilder ec) {
         boolean hasError = true;

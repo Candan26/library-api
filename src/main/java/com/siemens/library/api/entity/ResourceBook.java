@@ -42,7 +42,7 @@ public class ResourceBook {
     private String edition;
 
     @Column(name = "BookAvailability")
-    private boolean available;
+    private Boolean available;
 
 
 }

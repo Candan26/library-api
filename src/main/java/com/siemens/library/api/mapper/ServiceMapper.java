@@ -7,10 +7,14 @@ import com.siemens.library.api.entity.ResourceBook;
 import com.siemens.library.api.entity.ResourceBorrowing;
 import com.siemens.library.api.entity.ResourceMember;
 import com.siemens.library.api.model.RequestBodyToCreateBook;
+import com.siemens.library.api.model.ResponseToQueryBooks;
+
+import java.util.List;
 
 public interface ServiceMapper {
     BookDto bookToDto(ResourceBook book);
     ResourceBook clone(RequestBodyToCreateBook book, ResourceBook resourceBook);
     MemberDto memberToDto(ResourceMember resourceMember);
     BorrowingDto borrowingToDto(ResourceBorrowing resourceBorrowing);
+
 }

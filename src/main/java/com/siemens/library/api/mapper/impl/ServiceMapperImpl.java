@@ -24,7 +24,7 @@ public class ServiceMapperImpl implements ServiceMapper {
                 category(book.getCategory()).
                 publisher(book.getPublisher()).
                 edition(book.getEdition()).
-                available(book.isAvailable()).
+                available(book.getAvailable()).
                 build();
     }
 
